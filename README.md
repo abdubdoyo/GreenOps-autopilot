@@ -2,7 +2,7 @@
 
 **Carbon-Aware Compute Scheduler for AI & Data Workloads**
 
-GreenOps Autopilot is a high-performance optimization engine designed to slash the carbon footprint of cloud compute. By dynamically routing workloads to the cleanest global datacenters and optimizing execution timing, it cuts CO₂ emissions by up to **99%** without compromising on performance or budget.
+GreenOps Autopilot is a high-performance optimization engine designed to slash the carbon footprint of cloud compute. By dynamically routing workloads to the cleanest global datacenters and optimizing execution timing, it enables a reduction of compute-linked carbon intensity by up to **99%** without compromising on performance or budget.
 
 ---
 

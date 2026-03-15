@@ -57,28 +57,9 @@ export interface OptimizedPlan {
   costDeltaUSD: number;
   confidenceScore: number; // 0-100
   optimizationScore: number; // 0-100
-  auditLog: AuditLogEntry[];
-  assumptions: Assumption[];
   alternativeRegions: AlternativeRegion[];
 }
 
-export interface AuditLogEntry {
-  id: string;
-  timestamp: string;
-  step: string;
-  decision: string;
-  reasoning: string;
-  impact: "low" | "medium" | "high";
-  metadata?: Record<string, unknown>;
-}
-
-export interface Assumption {
-  id: string;
-  category: string;
-  description: string;
-  value: string;
-  confidence: "low" | "medium" | "high";
-}
 
 export interface AlternativeRegion {
   region: RegionCarbonProfile;

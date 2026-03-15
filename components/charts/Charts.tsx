@@ -5,7 +5,8 @@ import {
   Tooltip, ResponsiveContainer, Cell, RadarChart, Radar, PolarGrid,
   PolarAngleAxis, Legend
 } from "recharts";
-import { WEEKLY_SAVINGS, REGION_EMISSIONS_CHART } from "@/lib/mock-data/scenarios";
+const WEEKLY_SAVINGS: any[] = [];
+const REGION_EMISSIONS_CHART: any[] = [];
 
 const TOOLTIP_STYLE = {
   backgroundColor: "#0d1a0d",

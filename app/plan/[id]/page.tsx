@@ -9,8 +9,9 @@ import { PlanResponse, GeminiExplanation } from "@/lib/types";
 import {
   CheckCircle2, ChevronDown, ChevronUp, Download, Play,
   Leaf, DollarSign, Clock, Globe, Zap, Shield, Info,
-  MapPin, TrendingDown, Award, Sparkles, RefreshCw,
+  MapPin, TrendingDown, Award, Sparkles, RefreshCw, ListPlus,
 } from "lucide-react";
+import { addToQueue, isJobInQueue, isJobExecuted } from "@/lib/store/execution";
 
 function CompareCard({
   label, isBaseline, co2, cost, region, carbonIntensity, startTime,
@@ -89,76 +90,6 @@ function CompareCard({
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function AuditLog({ entries }: { entries: typeof DEMO_SCENARIOS[0]["optimizedPlan"]["auditLog"] }) {
-  return (
-    <div className="relative pl-4">
-      <div className="absolute left-0 top-0 bottom-0 w-px bg-gradient-to-b from-[#22c55e] via-[rgba(34,197,94,0.3)] to-transparent" />
-      <div className="space-y-6">
-        {entries.map((entry, i) => {
-          const impactColor = entry.impact === "high" ? "#22c55e" : entry.impact === "medium" ? "#eab308" : "#6b8f6b";
-          return (
-            <div key={entry.id} className="relative">
-              <div
-                className="absolute -left-[17px] top-0 w-3 h-3 rounded-full border-2 border-[#0a0f0a]"
-                style={{ backgroundColor: impactColor }}
-              />
-              <div className="pl-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-semibold text-white">{entry.step}</span>
-                  <Badge variant={entry.impact === "high" ? "green" : entry.impact === "medium" ? "yellow" : "ghost"}>
-                    {entry.impact}
-                  </Badge>
-                </div>
-                <div className="text-sm font-medium text-[#86efac] mb-1">{entry.decision}</div>
-                <div className="text-xs text-[#6b8f6b] leading-relaxed">{entry.reasoning}</div>
-                <div className="text-[10px] text-[#4a6b4a] mt-1 font-mono">
-                  Step {i + 1} of {entries.length}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function AssumptionsDrawer({ assumptions }: { assumptions: typeof DEMO_SCENARIOS[0]["optimizedPlan"]["assumptions"] }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="border border-[rgba(34,197,94,0.1)] rounded-xl overflow-hidden">
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-6 py-4 bg-[rgba(34,197,94,0.04)] hover:bg-[rgba(34,197,94,0.08)] transition-colors text-sm font-medium text-[#6b8f6b]"
-      >
-        <span className="flex items-center gap-2">
-          <Info className="w-4 h-4 text-[#22c55e]" />
-          Calculation Assumptions ({assumptions.length})
-        </span>
-        {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-      </button>
-      {open && (
-        <div className="p-6 space-y-3 border-t border-[rgba(34,197,94,0.1)]">
-          {assumptions.map((a) => (
-            <div key={a.id} className="flex items-start gap-4">
-              <Badge variant={a.confidence === "high" ? "green" : a.confidence === "medium" ? "yellow" : "ghost"} className="mt-0.5 shrink-0">
-                {a.confidence}
-              </Badge>
-              <div className="flex-1">
-                <div className="text-xs font-semibold text-[#86efac]">{a.category}: <span className="text-white font-normal">{a.description}</span></div>
-                <div className="text-xs text-[#6b8f6b] font-mono mt-0.5">{a.value}</div>
-              </div>
-            </div>
-          ))}
-          <p className="text-[10px] text-[#4a6b4a] pt-2 border-t border-[rgba(34,197,94,0.06)]">
-            All calculations are estimates. Actual emissions may vary based on real-time grid conditions, hardware utilization, and datacenter cooling efficiency.
-          </p>
-        </div>
-      )}
     </div>
   );
 }
@@ -300,22 +231,6 @@ export default function PlanResultsPage({ params }: { params: Promise<{ id: stri
     }
   }, [id]);
 
-  // Derive scenario from planResponse or fall back to static mock
-  const scenario = DEMO_SCENARIOS.find((s) => s.id === id) ?? DEMO_SCENARIOS[0];
-  const jobSpec = planResponse?.jobSpec ?? scenario.jobSpec;
-  const baselinePlan = planResponse?.baselinePlan ?? scenario.baselinePlan;
-  const optimizedPlan = planResponse?.optimizedPlan ?? scenario.optimizedPlan;
-  const explanation = planResponse?.explanation ?? null;
-  const source = planResponse?.source ?? "fallback";
-
-  const radarData = [
-    { metric: "Carbon Score", baseline: Math.round((1 - baselinePlan.carbonIntensityGCO2 / 500) * 100), optimized: Math.round((1 - optimizedPlan.carbonIntensityGCO2 / 500) * 100) },
-    { metric: "Cost Efficiency", baseline: 85, optimized: optimizedPlan.costDeltaUSD > 0 ? 78 : 90 },
-    { metric: "Speed", baseline: 90, optimized: 82 },
-    { metric: "Availability", baseline: baselinePlan.region.availabilityScore, optimized: optimizedPlan.region.availabilityScore },
-    { metric: "Reliability", baseline: 95, optimized: 92 },
-  ];
-
   async function handleRerunAI() {
     if (!planResponse) return;
     setRerunLoading(true);
@@ -348,12 +263,48 @@ export default function PlanResultsPage({ params }: { params: Promise<{ id: stri
     }
   }
 
-  async function handleExecute() {
+  const [inQueue, setInQueue] = useState(false);
+  const [isExecuted, setIsExecuted] = useState(false);
+
+  useEffect(() => {
+    if (!planResponse) return;
+    setInQueue(isJobInQueue(planResponse.optimizedPlan.jobId));
+    setIsExecuted(isJobExecuted(planResponse.optimizedPlan.jobId));
+
+    const handleUpdate = () => {
+      setInQueue(isJobInQueue(planResponse.optimizedPlan.jobId));
+      setIsExecuted(isJobExecuted(planResponse.optimizedPlan.jobId));
+    };
+    window.addEventListener("greenops_storage_update", handleUpdate);
+    return () => window.removeEventListener("greenops_storage_update", handleUpdate);
+  }, [planResponse]);
+
+  async function handleAddToQueue() {
+    if (!planResponse) return;
     setExecuting(true);
-    await new Promise((r) => setTimeout(r, 2000));
+    await new Promise((r) => setTimeout(r, 800));
+    addToQueue(planResponse);
     setExecuting(false);
     setExecuted(true);
   }
+
+  if (!planResponse) return (
+    <DashboardLayout title="Loading...">
+      <div className="flex items-center justify-center min-h-[400px]">
+        <RefreshCw className="w-8 h-8 text-[#22c55e] animate-spin" />
+      </div>
+    </DashboardLayout>
+  );
+
+  const { jobSpec, baselinePlan, optimizedPlan, explanation, source } = planResponse;
+
+  const radarData = [
+    { metric: "Carbon Score", baseline: Math.round((1 - baselinePlan.carbonIntensityGCO2 / 500) * 100), optimized: Math.round((1 - optimizedPlan.carbonIntensityGCO2 / 500) * 100) },
+    { metric: "Cost Efficiency", baseline: 85, optimized: optimizedPlan.costDeltaUSD > 0 ? 78 : 90 },
+    { metric: "Speed", baseline: 90, optimized: 82 },
+    { metric: "Availability", baseline: baselinePlan.region.availabilityScore, optimized: optimizedPlan.region.availabilityScore },
+    { metric: "Reliability", baseline: 95, optimized: 92 },
+  ];
 
   return (
     <DashboardLayout title="Plan Results">
@@ -369,7 +320,7 @@ export default function PlanResultsPage({ params }: { params: Promise<{ id: stri
               </Badge>
             </div>
             <p className="text-sm text-[#6b8f6b]">
-              {scenario.description}
+              Carbon-optimized execution plan for {jobSpec.workloadType} workload
             </p>
           </div>
           <div className="flex gap-3">
@@ -381,31 +332,42 @@ export default function PlanResultsPage({ params }: { params: Promise<{ id: stri
               variant="primary"
               size="md"
               loading={executing}
-              onClick={handleExecute}
-              disabled={executed}
+              onClick={handleAddToQueue}
+              disabled={executed || inQueue || isExecuted}
             >
-              {executed ? (
+              {isExecuted ? (
                 <>
                   <CheckCircle2 className="w-4 h-4" />
-                  Plan Executing
+                  Successfully Executed
+                </>
+              ) : inQueue || executed ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  In Pipeline
                 </>
               ) : (
                 <>
-                  <Play className="w-4 h-4" />
-                  Execute Plan
+                  <ListPlus className="w-4 h-4" />
+                  Add to Execution Pipeline
                 </>
               )}
             </Button>
           </div>
         </div>
 
-        {executed && (
+        {(executed || inQueue || isExecuted) && (
           <div className="p-4 rounded-xl border border-[rgba(34,197,94,0.4)] bg-[rgba(34,197,94,0.08)] flex items-center gap-3">
             <CheckCircle2 className="w-5 h-5 text-[#22c55e]" />
             <div>
-              <div className="text-sm font-semibold text-white">Plan dispatched to {optimizedPlan.region.name}</div>
+              <div className="text-sm font-semibold text-white">
+                {isExecuted 
+                  ? `Job completed in ${optimizedPlan.region.name}` 
+                  : `Job added to execution pipeline for ${optimizedPlan.region.name}`}
+              </div>
               <div className="text-xs text-[#6b8f6b]">
-                Job scheduled to start {formatDateTime(optimizedPlan.startTime)} · Saving {formatCO2(optimizedPlan.co2SavedKg)} CO₂
+                {isExecuted 
+                  ? `Completed at ${formatDateTime(new Date().toISOString())}`
+                  : `Job scheduled to start ${formatDateTime(optimizedPlan.startTime)} · Saving ${formatCO2(optimizedPlan.co2SavedKg)} CO₂`}
               </div>
             </div>
           </div>
@@ -571,22 +533,6 @@ export default function PlanResultsPage({ params }: { params: Promise<{ id: stri
           </div>
         </Card>
 
-        {/* Audit Log */}
-        <Card>
-          <div className="mb-6">
-            <h3 className="text-sm font-semibold uppercase tracking-widest text-[#6b8f6b]">
-              Optimizer Audit Log
-            </h3>
-            <p className="text-xs text-[#4a6b4a] mt-1">
-              Every decision made by the optimization engine, fully transparent
-            </p>
-          </div>
-          <AuditLog entries={optimizedPlan.auditLog} />
-        </Card>
-
-        {/* Assumptions */}
-        <AssumptionsDrawer assumptions={optimizedPlan.assumptions} />
-
         {/* AI Explanation Panel */}
         {explanation && (
           <AIExplanationPanel
@@ -597,10 +543,22 @@ export default function PlanResultsPage({ params }: { params: Promise<{ id: stri
           />
         )}
 
-        {/* Footer actions */}
         <div className="flex gap-4 pb-8">
-          <Button variant="primary" size="lg" className="flex-1" loading={executing} onClick={handleExecute} disabled={executed}>
-            {executed ? <><CheckCircle2 className="w-4 h-4" /> Executing in {optimizedPlan.region.name}</> : <><Play className="w-4 h-4" /> Execute Optimized Plan</>}
+          <Button 
+            variant="primary" 
+            size="lg" 
+            className="flex-1" 
+            loading={executing} 
+            onClick={handleAddToQueue} 
+            disabled={executed || inQueue || isExecuted}
+          >
+            {isExecuted ? (
+              <><CheckCircle2 className="w-4 h-4" /> Completed in {optimizedPlan.region.name}</>
+            ) : inQueue || executed ? (
+              <><CheckCircle2 className="w-4 h-4" /> In Pipeline for {optimizedPlan.region.name}</>
+            ) : (
+              <><ListPlus className="w-4 h-4" /> Add to Execution Pipeline</>
+            )}
           </Button>
           <Button variant="secondary" size="lg">
             <Download className="w-4 h-4" />

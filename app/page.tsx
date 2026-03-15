@@ -80,8 +80,8 @@ export default function LandingPage() {
             <Link href="/planner" className="flex items-center gap-2 px-8 py-4 rounded-xl bg-[#22c55e] text-[#0a0f0a] font-bold text-base hover:bg-[#16a34a] transition-all hover:scale-105 active:scale-100">
               <Zap className="w-5 h-5" />Plan your first job
             </Link>
-            <Link href="/plan/demo-llm-training" className="flex items-center gap-2 px-8 py-4 rounded-xl border border-[rgba(34,197,94,0.3)] text-[#22c55e] font-semibold text-base hover:bg-[rgba(34,197,94,0.08)] transition-all">
-              <Play className="w-5 h-5" />See live demo
+            <Link href="/dashboard" className="flex items-center gap-2 px-8 py-4 rounded-xl border border-[rgba(34,197,94,0.3)] text-[#22c55e] font-semibold text-base hover:bg-[rgba(34,197,94,0.08)] transition-all">
+              <BarChart3 className="w-5 h-5" />Explore Dashboard
             </Link>
           </div>
           <div className="mt-12 flex flex-wrap justify-center gap-6 text-sm text-[#4a6b4a]">
@@ -108,28 +108,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section id="features" className="py-24 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <div className="text-xs font-semibold uppercase tracking-widest text-[#22c55e] mb-3">Features</div>
-            <h2 className="text-4xl font-bold text-white mb-4">Everything you need to go green</h2>
-            <p className="text-[#6b8f6b] max-w-xl mx-auto">A complete stack for carbon-aware compute scheduling, from job spec to audit report.</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {FEATURES.map(({ icon: Icon, color, title, desc }) => (
-              <div key={title} className="glass-card p-6 group hover:border-[rgba(34,197,94,0.25)] transition-all duration-300">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4" style={{ backgroundColor: `${color}15`, border: `1px solid ${color}25` }}>
-                  <Icon className="w-5 h-5" style={{ color }} />
-                </div>
-                <h3 className="text-sm font-bold text-white mb-2">{title}</h3>
-                <p className="text-xs text-[#6b8f6b] leading-relaxed">{desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section id="how-it-works" className="py-24 px-6 bg-[#0d1a0d]">
+      <section id="how-it-works" className="py-24 px-6 relative">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.05)_0%,transparent_50%)] pointer-events-none" />
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-16">
             <div className="text-xs font-semibold uppercase tracking-widest text-[#22c55e] mb-3">Workflow</div>
@@ -150,23 +130,15 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="py-24 px-6">
+      <section className="py-24 px-6 border-t border-[rgba(34,197,94,0.08)]">
         <div className="max-w-3xl mx-auto text-center">
-          <div className="glass-card p-12 relative overflow-hidden">
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(34,197,94,0.08)_0%,transparent_70%)] pointer-events-none" />
-            <div className="relative">
-              <h2 className="text-4xl font-black text-white mb-4">Start saving carbon today</h2>
-              <p className="text-[#6b8f6b] mb-8">Connect your first job in under 5 minutes. No infra changes required.</p>
-              <div className="flex gap-4 justify-center">
-                <Link href="/dashboard" className="flex items-center gap-2 px-8 py-4 rounded-xl bg-[#22c55e] text-[#0a0f0a] font-bold hover:bg-[#16a34a] transition-all hover:scale-105">
-                  Open Dashboard <ArrowRight className="w-5 h-5" />
-                </Link>
-                <Link href="/plan/demo-llm-training" className="flex items-center gap-2 px-8 py-4 rounded-xl border border-[rgba(34,197,94,0.3)] text-[#22c55e] font-semibold hover:bg-[rgba(34,197,94,0.08)] transition-all">
-                  View demo plan
-                </Link>
-              </div>
+            <h2 className="text-4xl font-black text-white mb-4">Start saving carbon today</h2>
+            <p className="text-[#6b8f6b] mb-8">Connect your first job in under 5 minutes. Real grid data, zero infra changes.</p>
+            <div className="flex gap-4 justify-center">
+              <Link href="/dashboard" className="flex items-center gap-2 px-8 py-4 rounded-xl bg-[#22c55e] text-[#0a0f0a] font-bold hover:bg-[#16a34a] transition-all hover:scale-105 shadow-[0_0_20px_rgba(34,197,94,0.3)]">
+                Launch Dashboard <ArrowRight className="w-5 h-5" />
+              </Link>
             </div>
-          </div>
         </div>
       </section>
 
@@ -178,10 +150,7 @@ export default function LandingPage() {
             </div>
             <span className="text-sm text-[#6b8f6b]">GreenOps Autopilot · Built for a greener cloud</span>
           </div>
-          <div className="flex gap-6 text-xs text-[#4a6b4a]">
-            {["Privacy","Terms","Docs","GitHub"].map(l => <a key={l} href="#" className="hover:text-[#22c55e] transition-colors">{l}</a>)}
-          </div>
-          <div className="text-xs text-[#4a6b4a]">Powered by Electricity Maps API · Data updated every 15m</div>
+          <div className="text-xs text-[#4a6b4a]">Powered by Electricity Maps API</div>
         </div>
       </footer>
     </div>

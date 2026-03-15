@@ -65,7 +65,6 @@ export function MetricsGrid({ metrics }: { metrics: DashboardMetrics }) {
         label="Jobs Analyzed"
         value={metrics.totalJobsAnalyzed.toLocaleString()}
         subtext={`${metrics.activeJobs} currently active`}
-        change={12.4}
         icon={<BarChart2 className="w-5 h-5" />}
         color="#0ea5e9"
         delay={0}
@@ -74,7 +73,6 @@ export function MetricsGrid({ metrics }: { metrics: DashboardMetrics }) {
         label="CO₂ Saved"
         value={formatCO2(metrics.totalCO2SavedKg)}
         subtext="vs baseline execution"
-        change={18.2}
         icon={<Leaf className="w-5 h-5" />}
         color="#22c55e"
         delay={100}
@@ -83,7 +81,6 @@ export function MetricsGrid({ metrics }: { metrics: DashboardMetrics }) {
         label="Avg Optimization"
         value={formatPercent(metrics.avgOptimizationRate)}
         subtext="carbon reduction rate"
-        change={5.7}
         icon={<Activity className="w-5 h-5" />}
         color="#22c55e"
         delay={200}
@@ -92,7 +89,6 @@ export function MetricsGrid({ metrics }: { metrics: DashboardMetrics }) {
         label="Cost Delta"
         value={formatCurrency(Math.abs(metrics.totalCostDeltaUSD))}
         subtext={metrics.totalCostDeltaUSD < 0 ? "net savings" : "net premium"}
-        change={-8.1}
         icon={<DollarSign className="w-5 h-5" />}
         color="#eab308"
         delay={300}

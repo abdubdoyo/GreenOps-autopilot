@@ -113,6 +113,34 @@ export interface WeeklySavings {
   jobsOptimized: number;
 }
 
+// ── New types added for backend integration ───────────────────────────────────
+
+export interface GeminiExplanation {
+  summary: string;
+  whyThisRegion: string;
+  tradeoffs: string;
+  recommendations: string[];
+  funFact: string;
+  confidenceNote: string;
+  recommendation: "PROCEED" | "REVIEW" | "RECONSIDER";
+}
+
+export interface PlanResponse {
+  jobSpec: JobSpec;
+  baselinePlan: BaselinePlan;
+  optimizedPlan: OptimizedPlan;
+  explanation: GeminiExplanation;
+  source: "live" | "cached" | "fallback" | "static";
+  generatedAt: string;
+}
+
+export interface EnrichedRegionProfile extends RegionCarbonProfile {
+  liveCarbon?: number;
+  carbonSource: "live" | "static";
+}
+
+// ── Original types below ──────────────────────────────────────────────────────
+
 export interface DashboardMetrics {
   totalJobsAnalyzed: number;
   totalCO2SavedKg: number;

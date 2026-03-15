@@ -91,9 +91,46 @@ export default function PlannerPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    // Simulate API call
-    await new Promise((r) => setTimeout(r, 1800));
-    router.push("/plan/demo-llm-training");
+    try {
+      const deadlineInput = (e.currentTarget as HTMLFormElement).querySelector<HTMLInputElement>(
+        'input[type="datetime-local"]'
+      );
+      const deadline = deadlineInput?.value
+        ? new Date(deadlineInput.value).toISOString()
+        : new Date(Date.now() + 48 * 3600000).toISOString();
+
+      const jobSpec = {
+        id: `job-${Date.now()}`,
+        name: jobName || "Unnamed Job",
+        workloadType,
+        hardwareType,
+        runtimeHours: runtime,
+        deadline,
+        allowedRegions: selectedRegions,
+        costCapUSD: costCap,
+        perfPriority: "medium",
+        sustainabilityWeight: sustainWeight,
+        createdAt: new Date().toISOString(),
+      };
+
+      const res = await fetch("/api/plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(jobSpec),
+      });
+
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      const data = await res.json();
+
+      sessionStorage.setItem("greenops_plan", JSON.stringify(data));
+      router.push(`/plan/${data.optimizedPlan.jobId}`);
+    } catch (err) {
+      console.error("Failed to generate plan:", err);
+      // Fall back to demo on error
+      router.push("/plan/demo-llm-training");
+    } finally {
+      setLoading(false);
+    }
   }
 
   function handleDemo() {

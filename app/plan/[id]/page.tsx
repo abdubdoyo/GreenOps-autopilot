@@ -1,14 +1,15 @@
 "use client";
-import { use, useState } from "react";
+import { use, useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/Nav";
 import { Button, Badge, Card, ProgressBar, Separator } from "@/components/ui";
 import { BaselineVsOptimizedChart, OptimizationRadar } from "@/components/charts/Charts";
 import { DEMO_SCENARIOS } from "@/lib/mock-data/scenarios";
 import { formatCO2, formatCurrency, formatDateTime, getCarbonLabel, co2ToCarEquivalent } from "@/lib/utils";
+import { PlanResponse, GeminiExplanation } from "@/lib/types";
 import {
   CheckCircle2, ChevronDown, ChevronUp, Download, Play,
   Leaf, DollarSign, Clock, Globe, Zap, Shield, Info,
-  MapPin, TrendingDown, Award,
+  MapPin, TrendingDown, Award, Sparkles, RefreshCw,
 } from "lucide-react";
 
 function CompareCard({
@@ -162,24 +163,190 @@ function AssumptionsDrawer({ assumptions }: { assumptions: typeof DEMO_SCENARIOS
   );
 }
 
+// ── AI Explanation Panel ──────────────────────────────────────────────────────
+function AIExplanationPanel({
+  explanation,
+  source,
+  onRerun,
+  rerunLoading,
+}: {
+  explanation: GeminiExplanation;
+  source: "live" | "cached" | "fallback" | "static";
+  onRerun?: () => void;
+  rerunLoading?: boolean;
+}) {
+  const recBadge = {
+    PROCEED: { color: "#22c55e", bg: "rgba(34,197,94,0.12)", border: "rgba(34,197,94,0.4)" },
+    REVIEW: { color: "#eab308", bg: "rgba(234,179,8,0.12)", border: "rgba(234,179,8,0.4)" },
+    RECONSIDER: { color: "#ef4444", bg: "rgba(239,68,68,0.12)", border: "rgba(239,68,68,0.4)" },
+  }[explanation.recommendation];
+
+  const sourceLabel = {
+    live: { icon: "🟢", text: "Live carbon data" },
+    cached: { icon: "🟡", text: "Cached (15 min)" },
+    fallback: { icon: "⚪", text: "Static estimates" },
+    static: { icon: "⚪", text: "Static estimates" },
+  }[source];
+
+  return (
+    <Card>
+      <div className="flex items-center justify-between mb-5">
+        <h3 className="text-sm font-semibold uppercase tracking-widest text-[#6b8f6b] flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-[#22c55e]" />
+          AI Sustainability Analysis
+        </h3>
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] text-[#4a6b4a] flex items-center gap-1">
+            {sourceLabel.icon} {sourceLabel.text}
+          </span>
+          {onRerun && (
+            <button
+              onClick={onRerun}
+              disabled={rerunLoading}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[rgba(34,197,94,0.2)] text-[#6b8f6b] hover:border-[rgba(34,197,94,0.4)] hover:text-white transition-all text-[11px] disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3 h-3 ${rerunLoading ? "animate-spin" : ""}`} />
+              {rerunLoading ? "Thinking..." : "Re-run AI"}
+            </button>
+          )}
+          <div
+            className="text-xs font-bold px-3 py-1 rounded-full"
+            style={{ backgroundColor: recBadge.bg, color: recBadge.color, border: `1px solid ${recBadge.border}` }}
+          >
+            {explanation.recommendation}
+          </div>
+        </div>
+      </div>
+
+      {/* Summary */}
+      <p className="text-sm text-[#86efac] leading-relaxed mb-5">{explanation.summary}</p>
+
+      <div className="grid grid-cols-2 gap-5 mb-5">
+        {/* Why this region */}
+        <div className="p-4 rounded-xl bg-[rgba(34,197,94,0.04)] border border-[rgba(34,197,94,0.1)]">
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-[#22c55e] mb-2 flex items-center gap-1">
+            <MapPin className="w-3 h-3" /> Why This Region
+          </div>
+          <p className="text-xs text-[#a7c5a7] leading-relaxed">{explanation.whyThisRegion}</p>
+        </div>
+
+        {/* Tradeoffs */}
+        <div className="p-4 rounded-xl bg-[rgba(234,179,8,0.04)] border border-[rgba(234,179,8,0.1)]">
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-[#eab308] mb-2 flex items-center gap-1">
+            <Info className="w-3 h-3" /> Tradeoffs
+          </div>
+          <p className="text-xs text-[#a7c5a7] leading-relaxed">{explanation.tradeoffs}</p>
+        </div>
+      </div>
+
+      {/* Recommendations */}
+      <div className="mb-5">
+        <div className="text-[10px] font-semibold uppercase tracking-widest text-[#6b8f6b] mb-3">Recommendations</div>
+        <div className="space-y-2">
+          {explanation.recommendations.map((rec, i) => (
+            <div key={i} className="flex items-start gap-3">
+              <div className="w-5 h-5 rounded-full bg-[rgba(34,197,94,0.15)] border border-[rgba(34,197,94,0.3)] flex items-center justify-center shrink-0 mt-0.5">
+                <span className="text-[10px] font-bold text-[#22c55e]">{i + 1}</span>
+              </div>
+              <p className="text-xs text-[#a7c5a7] leading-relaxed">{rec}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Fun fact + confidence */}
+      <div className="flex gap-3">
+        <div className="flex-1 p-3 rounded-lg bg-[rgba(34,197,94,0.04)] border border-[rgba(34,197,94,0.08)]">
+          <div className="text-[9px] font-semibold uppercase tracking-widest text-[#6b8f6b] mb-1">🌍 CO₂ Equivalency</div>
+          <p className="text-xs text-[#86efac]">{explanation.funFact}</p>
+        </div>
+        <div className="flex-1 p-3 rounded-lg bg-[rgba(14,165,233,0.04)] border border-[rgba(14,165,233,0.08)]">
+          <div className="text-[9px] font-semibold uppercase tracking-widest text-[#4a8fa8] mb-1">📊 Confidence</div>
+          <p className="text-xs text-[#7ab8cc]">{explanation.confidenceNote}</p>
+        </div>
+      </div>
+    </Card>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function PlanResultsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [executing, setExecuting] = useState(false);
   const [executed, setExecuted] = useState(false);
+  const [planResponse, setPlanResponse] = useState<PlanResponse | null>(null);
+  const [rerunLoading, setRerunLoading] = useState(false);
 
-  // Find scenario – fall back to first demo
-  const scenario =
-    DEMO_SCENARIOS.find((s) => s.id === id) ?? DEMO_SCENARIOS[0];
+  // Load plan: sessionStorage → /api/demo for demo IDs → static mock
+  useEffect(() => {
+    const stored = sessionStorage.getItem("greenops_plan");
+    if (stored) {
+      try {
+        const data = JSON.parse(stored) as PlanResponse;
+        // Use stored data if jobId matches OR it's a real (non-demo) plan
+        if (!id.startsWith("demo-") || data.optimizedPlan.jobId === id) {
+          setPlanResponse(data);
+          return;
+        }
+      } catch {/* ignore parse errors */}
+    }
 
-  const { jobSpec, baselinePlan, optimizedPlan } = scenario;
+    // For demo routes, fetch live from /api/demo to get fresh Gemini explanation
+    if (id.startsWith("demo-")) {
+      fetch("/api/demo")
+        .then((r) => r.json())
+        .then((data: PlanResponse) => setPlanResponse(data))
+        .catch(() => { /* use static fallback below */ });
+    }
+  }, [id]);
+
+  // Derive scenario from planResponse or fall back to static mock
+  const scenario = DEMO_SCENARIOS.find((s) => s.id === id) ?? DEMO_SCENARIOS[0];
+  const jobSpec = planResponse?.jobSpec ?? scenario.jobSpec;
+  const baselinePlan = planResponse?.baselinePlan ?? scenario.baselinePlan;
+  const optimizedPlan = planResponse?.optimizedPlan ?? scenario.optimizedPlan;
+  const explanation = planResponse?.explanation ?? null;
+  const source = planResponse?.source ?? "fallback";
 
   const radarData = [
-    { metric: "Carbon Score", baseline: 5, optimized: 98 },
-    { metric: "Cost Efficiency", baseline: 85, optimized: 78 },
+    { metric: "Carbon Score", baseline: Math.round((1 - baselinePlan.carbonIntensityGCO2 / 500) * 100), optimized: Math.round((1 - optimizedPlan.carbonIntensityGCO2 / 500) * 100) },
+    { metric: "Cost Efficiency", baseline: 85, optimized: optimizedPlan.costDeltaUSD > 0 ? 78 : 90 },
     { metric: "Speed", baseline: 90, optimized: 82 },
-    { metric: "Availability", baseline: 95, optimized: 90 },
+    { metric: "Availability", baseline: baselinePlan.region.availabilityScore, optimized: optimizedPlan.region.availabilityScore },
     { metric: "Reliability", baseline: 95, optimized: 92 },
   ];
+
+  async function handleRerunAI() {
+    if (!planResponse) return;
+    setRerunLoading(true);
+    try {
+      const res = await fetch("/api/explain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jobSpec: planResponse.jobSpec,
+          baselinePlan: planResponse.baselinePlan,
+          optimizedPlan: planResponse.optimizedPlan,
+          rankedRegions: planResponse.optimizedPlan.alternativeRegions?.map((a, i) => ({
+            region: a.region,
+            energyKwh: planResponse.optimizedPlan.energyKwh,
+            co2Kg: a.co2Kg,
+            costUSD: a.costUSD,
+            score: 1 - i * 0.1,
+            rank: a.rank,
+          })) ?? [],
+        }),
+      });
+      const data = await res.json();
+      if (data.explanation) {
+        setPlanResponse((prev) => prev ? { ...prev, explanation: data.explanation } : prev);
+      }
+    } catch (err) {
+      console.error("Failed to re-run AI:", err);
+    } finally {
+      setRerunLoading(false);
+    }
+  }
 
   async function handleExecute() {
     setExecuting(true);
@@ -419,6 +586,16 @@ export default function PlanResultsPage({ params }: { params: Promise<{ id: stri
 
         {/* Assumptions */}
         <AssumptionsDrawer assumptions={optimizedPlan.assumptions} />
+
+        {/* AI Explanation Panel */}
+        {explanation && (
+          <AIExplanationPanel
+            explanation={explanation}
+            source={source}
+            onRerun={handleRerunAI}
+            rerunLoading={rerunLoading}
+          />
+        )}
 
         {/* Footer actions */}
         <div className="flex gap-4 pb-8">
